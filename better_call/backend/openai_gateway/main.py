@@ -1,15 +1,14 @@
-from fastapi import FastAPI, Request, Response
-from database.db import PromptDB
+from fastapi import APIRouter, Request, Response
 import os
 import requests
 import json
 import traceback
 import datetime
 
-app = FastAPI()
+router = APIRouter(prefix="/openai-gateway")
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-AUTH_HEADER = {"Authorization": f"Bearer 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"}
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+AUTH_HEADER = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
 
 CALL_ACCEPT_CONFIG = {
     "type": "realtime",
@@ -28,20 +27,11 @@ CALL_ACCEPT_CONFIG = {
     "model": "gpt-realtime",
 }
 
-@app.post("/")
+@router.post("/")
 async def handle_webhook(request: Request):
-    print("\n\n--- NOVA REQUISIÇÃO RECEBIDA ---")
-    print("Timestamp:", datetime.datetime.now().isoformat())
-
     try:
-        headers = dict(request.headers)
-        print("HEADERS:")
-        for k, v in headers.items():
-            print(f"  {k}: {v}")
 
         raw_body = await request.body()
-        print("RAW BODY:")
-        print(raw_body.decode("utf-8", errors="replace"))
 
         try:
             event = json.loads(raw_body)
@@ -59,21 +49,36 @@ async def handle_webhook(request: Request):
 
         if event_type == "realtime.call.incoming" and call_id:
             print(f"==> Chamada recebida! call_id={call_id}")
+            # Get last prompt from shared DB
+            last_prompt = None
+            try:
+                db = request.app.state.db
+                if db is not None:
+                    last_prompt = db.get_last_prompt()
+            except Exception:
+                pass
+
+            # Merge last prompt into instructions if present
+            payload = dict(CALL_ACCEPT_CONFIG)
+            if last_prompt:
+                payload = dict(payload)
+                payload["instructions"] = last_prompt
+
             url = f"https://api.openai.com/v1/realtime/calls/{call_id}/accept"
 
             print("==> Enviando POST para /accept...")
             print("URL:", url)
             print("HEADERS:", AUTH_HEADER)
-            print("PAYLOAD:", json.dumps(CALL_ACCEPT_CONFIG, indent=2))
+            print("PAYLOAD:", json.dumps(payload, indent=2))
 
             resp = requests.post(
                 url,
                 headers={**AUTH_HEADER, "Content-Type": "application/json"},
-                json=CALL_ACCEPT_CONFIG,
+                json=payload,
                 timeout=10
             )
 
-            print("==> RESPOSTA DO /ACCEPT:")
+            print("==> Resposta do /accept:")
             print("Status code:", resp.status_code)
             print("Headers:", dict(resp.headers))
             print("Body:")

@@ -1,24 +1,26 @@
 import os
-from fastapi import FastAPI, Form, Request
+from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse
 from starlette.templating import Jinja2Templates
 import httpx
 from dotenv import load_dotenv
 
+
 load_dotenv()  # reads frontend/.env if present
 
-app = FastAPI(title="Call Frontend")
+router = APIRouter()
 
 # Where to send the API request
 BACKEND_BASE_URL = os.getenv("BACKEND_BASE_URL", "http://127.0.0.1:9001")
 
-templates = Jinja2Templates(directory="templates")
+BASE_DIR = os.path.dirname(__file__)
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
-@app.get("/", response_class=HTMLResponse)
+@router.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-@app.post("/call", response_class=HTMLResponse)
+@router.post("/call", response_class=HTMLResponse)
 async def submit_form(
     request: Request,
     name: str = Form(...),
