@@ -1,0 +1,16 @@
+<!doctype html>
+<html>
+  <head><meta charset="utf-8"><title>Make a Call</title></head>
+  <body>
+    <h1>Make a Call</h1>
+    <form method="post" action="/call">
+      <label>Name<br><input type="text" name="name" required></label><br><br>
+      <label>Email<br><input type="email" name="email" required></label><br><br>
+      <label>Destination Phone number (+5533... format)<br>
+        <input type="tel" name="destination" placeholder="+5533XXXXXXXXX" required>
+      </label><br><br>
+      <label>Prompt (optional)<br><textarea name="prompt" rows="4" cols="40"></textarea></label><br><br>
+      <button type="submit">Call</button>
+    </form>
+  </body>
+</html>
