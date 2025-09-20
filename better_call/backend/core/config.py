@@ -20,6 +20,12 @@ class Settings:
         self.stripe_publishable_key = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
         self.stripe_webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
         
+        # Payment Configuration
+        self.payment_amount = float(os.getenv("PAYMENT_AMOUNT", "2.00"))
+        self.payment_currency = os.getenv("PAYMENT_CURRENCY", "usd")
+        self.payment_description = os.getenv("PAYMENT_DESCRIPTION", "Better Call Service")
+        self.payment_success_url = os.getenv("PAYMENT_SUCCESS_URL", "http://localhost:9001/payment-confirmation")
+        
         # Database Configuration
         self.db_path = os.getenv(
             "DB_PATH",

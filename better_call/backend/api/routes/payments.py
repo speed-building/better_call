@@ -1,27 +1,43 @@
-from fastapi import APIRouter, HTTPException, Request, Header
+from fastapi import APIRouter, HTTPException, Request, Header, Depends
 from fastapi.responses import JSONResponse
 from typing import Optional
 import json
 
-from ...models.requests import PaymentRequest
-from ...models.responses import PaymentResponse, PaymentStatusResponse
+from ...models.responses import PaymentResponse
+from ...models.user import User
 from ...services.payment_service import PaymentService
+from ...repositories.user_repository import UserRepository
+from ..dependencies import get_user_repository, get_current_user_email
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
 
+def get_current_user(
+    user_repo: UserRepository = Depends(get_user_repository),
+    email: Optional[str] = Depends(get_current_user_email)
+) -> User:
+    """Get the current authenticated user."""
+    if not user_repo:
+        raise HTTPException(status_code=500, detail="User repository unavailable")
+    if not email:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    user_dict = user_repo.get_user_by_email(email)
+    if not user_dict:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    return User(**user_dict)
+
+
 @router.post("/create", response_model=PaymentResponse)
-async def create_payment(payment_request: PaymentRequest):
+async def create_payment(
+    current_user: User = Depends(get_current_user)
+):
     payment_service = PaymentService()
     
     try:
         result = await payment_service.create_payment_link(
-            amount=payment_request.amount,
-            currency=payment_request.currency,
-            success_url=payment_request.success_url,
-            cancel_url=payment_request.cancel_url,
-            description=payment_request.description,
-            customer_email=payment_request.customer_email
+            user=current_user
         )
         
         if not result.ok:

@@ -12,6 +12,8 @@ class PromptDB:
 
     def _criar_tabela(self):
         with self.lock:
+            self.conn.execute("PRAGMA foreign_keys = ON")
+            
             self.conn.execute('''
                 CREATE TABLE IF NOT EXISTS call_requests (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,6 +26,7 @@ class PromptDB:
             self.conn.execute('''
                 CREATE TABLE IF NOT EXISTS payments (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
                     stripe_payment_link_id TEXT UNIQUE,
                     amount DECIMAL(10,2) NOT NULL,
                     currency TEXT NOT NULL DEFAULT 'usd',
@@ -33,7 +36,8 @@ class PromptDB:
                     success_url TEXT,
                     cancel_url TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (id)
                 )
             ''')
             self.conn.commit()
@@ -54,16 +58,17 @@ class PromptDB:
             row = cursor.fetchone()
             return row[0] if row else None
 
-    def insert_payment(self, stripe_payment_link_id: Optional[str], amount: Decimal, currency: str = "usd", 
+    def insert_payment(self, user_id: int, stripe_payment_link_id: Optional[str], amount: Decimal, currency: str = "usd", 
                       description: Optional[str] = None, customer_email: Optional[str] = None,
-                      success_url: Optional[str] = None, cancel_url: Optional[str] = None) -> int:
+                      success_url: Optional[str] = None) -> int:
         """Insert a new payment record and return the payment ID."""
         with self.lock:
+            self.conn.execute("PRAGMA foreign_keys = ON")  # Garantir que FK está ativa
             cursor = self.conn.execute(
                 """INSERT INTO payments 
-                   (stripe_payment_link_id, amount, currency, description, customer_email, success_url, cancel_url) 
+                   (user_id, stripe_payment_link_id, amount, currency, description, customer_email, success_url) 
                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (stripe_payment_link_id, float(amount), currency, description, customer_email, success_url, cancel_url)
+                (user_id, stripe_payment_link_id, float(amount), currency, description, customer_email, success_url)
             )
             self.conn.commit()
             return cursor.lastrowid
@@ -113,6 +118,19 @@ class PromptDB:
                 columns = [description[0] for description in cursor.description]
                 return dict(zip(columns, row))
             return None
+
+    def get_payments_by_user_id(self, user_id: int) -> list[Dict[str, Any]]:
+        """Get all payments for a specific user."""
+        with self.lock:
+            cursor = self.conn.execute(
+                "SELECT * FROM payments WHERE user_id = ? ORDER BY created_at DESC",
+                (user_id,)
+            )
+            rows = cursor.fetchall()
+            if rows:
+                columns = [description[0] for description in cursor.description]
+                return [dict(zip(columns, row)) for row in rows]
+            return []
 
     def close(self) -> None:
         with self.lock:
