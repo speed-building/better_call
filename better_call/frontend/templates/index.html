@@ -1,16 +1,139 @@
 <!doctype html>
-<html>
-  <head><meta charset="utf-8"><title>Make a Call</title></head>
-  <body>
-    <h1>Make a Call</h1>
-    <form method="post" action="/call">
-      <label>Name<br><input type="text" name="name" required></label><br><br>
-      <label>Email<br><input type="email" name="email" required></label><br><br>
-      <label>Destination Phone number (+5533... format)<br>
-        <input type="tel" name="destination" placeholder="+5533XXXXXXXXX" required>
-      </label><br><br>
-      <label>Prompt (optional)<br><textarea name="prompt" rows="4" cols="40"></textarea></label><br><br>
-      <button type="submit">Call</button>
-    </form>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Make a Call • Better Call</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Tailwind via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="theme-color" content="#7c3aed" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      html { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+      .fade-in { animation: fadeIn .4s ease-out both; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } }
+    </style>
+  </head>
+  <body class="min-h-dvh bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+    <div class="mx-auto max-w-2xl p-6">
+      <!-- Header -->
+      <header class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 rounded-2xl bg-gradient-to-br from-fuchsia-500 to-indigo-600 shadow-lg"></div>
+          <div>
+            <h1 class="text-xl font-extrabold tracking-tight text-gray-800">Better Call</h1>
+            <p class="text-sm text-gray-500">Have an AI place any kind of call—on your behalf.</p>
+          </div>
+        </div>
+      </header>
+
+      <!-- Card -->
+      <main class="bg-white/70 backdrop-blur-xl shadow-xl ring-1 ring-black/5 rounded-3xl p-6 sm:p-8 fade-in">
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-gray-900">Make a Call</h2>
+        <p class="mt-1 text-sm text-gray-600">
+          Fill in the details and Better Call will place an AI‑powered call to your recipient. Use it for
+          greetings, reminders, apologies, congratulations, check‑ins, logistics—and more.
+        </p>
+
+        <form id="call-form" method="post" action="/call" class="mt-6 space-y-5">
+          <!-- Name -->
+          <div>
+            <label class="block text-sm font-medium text-gray-800">Your name</label>
+            <input
+              class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 shadow-sm outline-none ring-indigo-200 transition focus:ring-4"
+              type="text" name="name" placeholder="e.g., Maria Silva" required />
+          </div>
+
+          <!-- Email -->
+          <div>
+            <label class="block text-sm font-medium text-gray-800">Your email</label>
+            <input
+              class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 shadow-sm outline-none ring-indigo-200 transition focus:ring-4"
+              type="email" name="email" placeholder="you@example.com" required />
+            <p class="mt-1 text-xs text-gray-500">We’ll send a confirmation here.</p>
+          </div>
+
+          <!-- Destination -->
+          <div>
+            <label class="block text-sm font-medium text-gray-800">
+              Recipient’s phone <span class="text-gray-500">(E.164, e.g., +5533XXXXXXXXX)</span>
+            </label>
+            <input
+              class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 shadow-sm outline-none ring-indigo-200 transition focus:ring-4"
+              type="tel" name="destination" inputmode="tel" placeholder="+5533XXXXXXXXX" required />
+          </div>
+
+          <!-- Prompt -->
+          <!-- Password -->
+          <div>
+            <label class="block text-sm font-medium text-gray-800">Password</label>
+            <input
+              class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 shadow-sm outline-none ring-indigo-200 transition focus:ring-4"
+              type="password" name="password" placeholder="Your password" required />
+            <p class="mt-1 text-xs text-gray-500">Used to authenticate and manage your credits.</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-800">Call script / prompt (optional)</label>
+            <textarea
+              class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 shadow-sm outline-none ring-indigo-200 transition focus:ring-4"
+              name="prompt" rows="5"
+              placeholder="What should the AI say? (e.g., 'Hi João, quick reminder about our 3 PM appointment. Call back if you need to reschedule.')"></textarea>
+            <p class="mt-1 text-xs text-gray-500">
+              Leave blank to use a friendly, generic script suitable for the occasion.
+            </p>
+          </div>
+
+          <!-- Disclosure -->
+          <div class="rounded-xl bg-indigo-50/60 p-4 ring-1 ring-indigo-100">
+            <p class="text-xs text-indigo-900">
+              <strong>Heads‑up:</strong> The recipient will hear an AI voice calling on your behalf and may be informed the call is automated.
+            </p>
+          </div>
+
+          <!-- Actions -->
+          <div class="pt-2 flex items-center gap-3">
+            <button
+              id="submit-btn"
+              type="submit"
+              class="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-white font-semibold shadow-lg hover:bg-indigo-700 active:scale-[.98] transition">
+              <svg id="spinner" class="hidden h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4A4 4 0 004 12z"></path>
+              </svg>
+              <span id="btn-text">Place call</span>
+            </button>
+            <a href="/" class="text-sm font-medium text-gray-600 hover:text-gray-900">Back to Home</a>
+          </div>
+
+          <!-- Future: credits/Swipe hint (non-functional now) -->
+          <p class="text-xs text-gray-400">
+            Coming soon: If you’re out of credits, Better Call will guide you to a quick checkout to top up.
+          </p>
+        </form>
+      </main>
+
+      <!-- Footer -->
+      <footer class="mt-8 text-center text-xs text-gray-500">
+        Better Call — AI calls that say what matters.
+      </footer>
+    </div>
+
+    <!-- Tiny progressive enhancement: loading state; later you’ll hook credit-check here -->
+    <script>
+      const form = document.getElementById('call-form');
+      const btn  = document.getElementById('submit-btn');
+      const txt  = document.getElementById('btn-text');
+      const spn  = document.getElementById('spinner');
+
+      form.addEventListener('submit', () => {
+        // (Future) Here you could do:
+        // 1) fetch('/api/credits') -> if insufficient: window.location = swipeCheckoutUrl
+        // 2) else: allow submit
+        btn.disabled = true;
+        spn.classList.remove('hidden');
+        txt.textContent = 'Requesting...';
+      });
+    </script>
   </body>
 </html>

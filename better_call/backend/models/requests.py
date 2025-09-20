@@ -17,7 +17,6 @@ class CallRequest(BaseModel):
         description="Optional prompt to customize the call behavior"
     )
 
-
 class PaymentRequest(BaseModel):
     """Request model for creating a payment."""
     
@@ -27,3 +26,12 @@ class PaymentRequest(BaseModel):
     customer_email: Optional[str] = Field(default=None, description="Customer email")
     success_url: str = Field(description="URL to redirect after successful payment")
     cancel_url: str = Field(description="URL to redirect after cancelled payment")
+
+class RegisterRequest(BaseModel):
+    email: str
+    password: str = Field(min_length=6)
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str

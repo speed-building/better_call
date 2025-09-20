@@ -47,3 +47,12 @@ class PaymentStatusResponse(BaseModel):
     customer_email: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+      
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class CreditsResponse(BaseModel):
+    email: str
+    credits: int
