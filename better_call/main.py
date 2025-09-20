@@ -12,6 +12,7 @@ load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 from .database.db import PromptDB
 # Import new backend architecture
 from .backend.repositories.call_repository import CallRepository
+from .backend.repositories.user_repository import UserRepository
 from .backend.core.config import settings
 from .backend.api import router as backend_router
 from .frontend.main import router as frontend_router
@@ -28,6 +29,7 @@ async def lifespan(app: FastAPI):
     
     # Add new repository for improved backend
     app.state.call_repository = CallRepository(db_path=db_path)
+    app.state.user_repository = UserRepository(db_path=db_path)
     
     try:
         yield
@@ -35,6 +37,7 @@ async def lifespan(app: FastAPI):
         try:
             app.state.db.close()
             app.state.call_repository.close()
+            # user_repository uses context managers; nothing to close explicitly
         except Exception:
             pass
 
