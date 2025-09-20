@@ -8,34 +8,43 @@ from dotenv import load_dotenv
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
+# Import old database for backward compatibility (will be replaced)
 from .database.db import PromptDB
-from .backend.main import router as backend_router
+# Import new backend architecture
+from .backend.repositories.call_repository import CallRepository
+from .backend.core.config import settings
+from .backend.api import router as backend_router
 from .frontend.main import router as frontend_router
 from .backend.openai_gateway.main import router as openai_gateway_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    db_path = os.getenv(
-        "DB_PATH",
-        os.path.join(os.path.dirname(__file__), "banco.db"),
-    )
+    # Initialize database with new repository pattern
+    db_path = settings.db_path
+    
+    # Keep old DB for backward compatibility with OpenAI gateway
     app.state.db = PromptDB(db_path=db_path)
+    
+    # Add new repository for improved backend
+    app.state.call_repository = CallRepository(db_path=db_path)
+    
     try:
         yield
     finally:
         try:
             app.state.db.close()
+            app.state.call_repository.close()
         except Exception:
             pass
 
 
-app = FastAPI(title="Better Call - Unified App", lifespan=lifespan)
+app = FastAPI(title="Better Call", lifespan=lifespan)
 
 # Frontend (forms + templates)
 app.include_router(frontend_router)
 
-# Backend (Twilio call + saving to DB)
+# Backend (improved architecture)
 app.include_router(backend_router)
 
 # OpenAI Gateway (consume last prompt and call OpenAI)
