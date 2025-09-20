@@ -44,7 +44,7 @@ class CallService:
                 try:
                     db_instance.insert_call_request(
                         email=request.email,
-                        telefone=request.destination,
+                        phone_to=request.destination,
                         prompt=enriched_prompt
                     )
                 except Exception as e:

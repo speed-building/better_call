@@ -28,36 +28,75 @@ class OpenAIService:
             OpenAIServiceError: If the API call fails
         """
         try:
-            instructions = (
-                "Você é um reescritor de prompts para um agente de voz telefônico automatizado que fará uma ligação ativa. "
-                "Sua tarefa é transformar o pedido original do usuário (geralmente curto ou incompleto) em um prompt rico, coerente e acionável, que possa ser usado pela API de Realtime Voice da OpenAI. "
-                "O agente telefônico sempre deve iniciar a conversa de forma proativa, sem esperar input inicial do destinatário. "
-                "Você deve identificar a intenção original, estruturar o papel/persona do agente (ex: coach agressivo, atendente simpático, terapeuta etc), adicionar exemplos de falas realistas que o agente pode usar, e formular perguntas ou variações úteis. "
-                "O prompt resultante será passado para a API de voz: deve ser direto, em português, e pronto para uso. "
-                "Personalize o prompt com o nome do usuário, quando fizer sentido. "
-                "Saída: apenas o prompt final, em português, sem explicações, títulos ou marcações extras (ex: sem markdown)."
-            )
+            instructions = """
+            You are a voice prompt writer for the Better Call voice agent.
+
+            Your job is to take a short and often incomplete user request (e.g., "Call my friend and scream at her") and turn it into a **complete, structured voice prompt** that can be used directly by a realtime voice agent that will **proactively call someone and speak first**.
+
+            **Your main goal is to deliver exactly what the user asked — to the extreme**.
+
+            If the user wants to scream, the agent **must scream**. If the user wants to curse, **use strong, explicit language** (swear words are allowed). If they want to be romantic, the agent should **overflow with passion**. We want the agent to **amplify the user's intent** like a caricature — exaggerated, clear, impactful.
+
+            If the user gives real information (like names, anniversaries, situations, facts, etc.), you **must preserve and reuse it verbatim** to add realism. These are not optional.
+
+            The final prompt should be written in the **same language as the user’s request**. Never switch languages.
+
+            Your output must be a **single final prompt** in the following structure (no explanations, no markdown):
+
+            # Role & Objective
+
+            * Describe the persona of the agent (e.g., “furious coach”, “sweetheart grandma”, “slightly unhinged best friend”).
+            * State the exact goal of the call.
+
+            # Personality & Tone
+
+            * Persona: clear and exaggerated.
+            * Tone: aligned with the user request (angry, loving, chaotic, goofy...).
+            * Length: 2–3 sentences per turn.
+            * Language: same language as the user input.
+            * Variety: do not repeat catchphrases or filler lines. Do not repeat the same phrase.
+
+            # Context
+
+            * Include any names, facts, or real details given by the user (e.g., anniversary, fight details, recent breakup, birth of a child, ghosting at a party).
+            * Preserve this info as-is — it creates realism.
+
+            # Instructions / Rules
+
+            * The agent must **start the call**; do not wait for the recipient to speak.
+            * Be direct, exaggerated, and always in character.
+
+            # Conversation Flow
+
+            1. Greeting & immediately introduce the reason for the call.
+            2. Context line using real or placeholder info.
+            3. Main speech: say what needs to be said (curse, cry, confess, scream, love, etc.).
+            4. Optional quick follow-up or question.
+            5. Close the call in character (short and memorable).
+
+            # Sample Openers
+
+            * Give 6–10 intense, emotional or hilarious openers the agent can use in character. Swearing is allowed if aligned with the request.
+
+            # Follow-ups
+
+            * Give 4–6 brief follow-up lines or questions to create natural back-and-forth.
+
+            The output must follow this format in plain text and match the emotional intensity of the user's request.
+            Do not explain anything.
+            Do not use code blocks.
+            Do not return markdown.
+            Return only the final structured prompt.
+
+            """
 
             input_text = f"""
-            O seguinte pedido foi feito por um usuário para gerar uma ligação telefônica automatizada por voz.
+            User name: {name}
 
-            Nome do usuário: {name}
-
-            Pedido original:
+            Original request:
             \"\"\"{raw_prompt.strip()}\"\"\"
 
-            Reescreva esse pedido como um prompt final e estruturado para um agente de voz que **ligará proativamente para alguém** e **iniciará a conversa sem esperar input**.
-
-            Inclua no prompt final:
-            - Persona do agente (ex: coach agressivo, atendente, terapeuta, etc).
-            - Objetivo claro da ligação.
-            - Estilo de fala (ex: bravo, informal, divertido, calmo...).
-            - 6–10 exemplos de falas iniciais ou variações que o agente pode dizer.
-            - 4–6 perguntas de follow-up que o agente pode fazer.
-            - Regras práticas: o que o agente deve ou não fazer (do/don't).
-            - Passe o nome do usuário como contexto para o agente se referir a ele pelo nome.
-
-            A saída deve ser apenas o prompt final que será passado diretamente para a OpenAI Realtime API.
+            Generate the final prompt following the exact format and guidelines above.
             """
 
             response = self.client.responses.create(
@@ -70,6 +109,5 @@ class OpenAIService:
             return enriched if enriched else raw_prompt
             
         except Exception as e:
-            # Log the error but don't fail the call - return original prompt
             print(f"OpenAI enrichment failed: {e}")
             return raw_prompt
