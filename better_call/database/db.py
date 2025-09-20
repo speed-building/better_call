@@ -24,7 +24,7 @@ class PromptDB:
             self.conn.execute('''
                 CREATE TABLE IF NOT EXISTS payments (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    stripe_payment_link_id TEXT UNIQUE NOT NULL,
+                    stripe_payment_link_id TEXT UNIQUE,
                     amount DECIMAL(10,2) NOT NULL,
                     currency TEXT NOT NULL DEFAULT 'usd',
                     status TEXT NOT NULL DEFAULT 'pending',
@@ -54,7 +54,7 @@ class PromptDB:
             row = cursor.fetchone()
             return row[0] if row else None
 
-    def insert_payment(self, stripe_payment_link_id: str, amount: Decimal, currency: str = "usd", 
+    def insert_payment(self, stripe_payment_link_id: Optional[str], amount: Decimal, currency: str = "usd", 
                       description: Optional[str] = None, customer_email: Optional[str] = None,
                       success_url: Optional[str] = None, cancel_url: Optional[str] = None) -> int:
         """Insert a new payment record and return the payment ID."""
@@ -74,6 +74,16 @@ class PromptDB:
             cursor = self.conn.execute(
                 "UPDATE payments SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE stripe_payment_link_id = ?",
                 (status, stripe_payment_link_id)
+            )
+            self.conn.commit()
+            return cursor.rowcount > 0
+
+    def update_payment_stripe_id(self, payment_id: int, stripe_payment_link_id: str) -> bool:
+        """Update payment with Stripe payment link ID by internal payment ID."""
+        with self.lock:
+            cursor = self.conn.execute(
+                "UPDATE payments SET stripe_payment_link_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (stripe_payment_link_id, payment_id)
             )
             self.conn.commit()
             return cursor.rowcount > 0

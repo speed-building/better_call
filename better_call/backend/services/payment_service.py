@@ -27,6 +27,21 @@ class PaymentService:
         try:
             amount_cents = int(amount * 100)
             
+            payment_id = self.payment_repo.create_payment(
+                stripe_payment_link_id=None,
+                amount=amount,
+                currency=currency,
+                description=description,
+                customer_email=customer_email,
+                success_url=success_url,
+                cancel_url=cancel_url
+            )
+            
+            # Construir URLs com o payment_id
+            success_url_with_id = f"{success_url}?payment_id={payment_id}"
+            cancel_url_with_id = f"{cancel_url}?payment_id={payment_id}"
+            
+            # Criar o payment link no Stripe com as URLs que incluem o payment_id
             payment_link = stripe.PaymentLink.create(
                 line_items=[{
                     'price_data': {
@@ -40,7 +55,7 @@ class PaymentService:
                 }],
                 after_completion={
                     'type': 'redirect',
-                    'redirect': {'url': success_url}
+                    'redirect': {'url': success_url_with_id}
                 },
                 automatic_tax={'enabled': False},
                 billing_address_collection='auto',
@@ -54,18 +69,12 @@ class PaymentService:
                 metadata={
                     'customer_email': customer_email or '',
                     'description': description or '',
+                    'payment_id': str(payment_id),
                 }
             )
             
-            payment_id = self.payment_repo.create_payment(
-                stripe_payment_link_id=payment_link.id,
-                amount=amount,
-                currency=currency,
-                description=description,
-                customer_email=customer_email,
-                success_url=success_url,
-                cancel_url=cancel_url
-            )
+            # Atualizar o payment com o stripe_payment_link_id
+            self.payment_repo.update_payment_stripe_id(payment_id, payment_link.id)
             
             return PaymentResponse(
                 ok=True,
