@@ -17,7 +17,8 @@ class CallService:
     def process_call_request(
         self, 
         request: CallRequest, 
-        db_instance: Optional[Any] = None
+        db_instance: Optional[Any] = None,
+        user_id: Optional[int] = None,
     ) -> CallResponse:
         """
         Process a complete call request including prompt enrichment, database storage, and call execution.
@@ -45,7 +46,8 @@ class CallService:
                     db_instance.insert_call_request(
                         email=request.email,
                         phone_to=request.destination,
-                        prompt=enriched_prompt
+                        prompt=enriched_prompt,
+                        user_id=user_id,
                     )
                 except Exception as e:
                     # Log but don't fail the call

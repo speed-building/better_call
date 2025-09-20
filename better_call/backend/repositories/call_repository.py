@@ -24,9 +24,22 @@ class CallRepository:
                         email TEXT NOT NULL,
                         phone_to TEXT NOT NULL,
                         prompt TEXT NOT NULL,
+                        user_id INTEGER,
+                        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','fulfilled')),
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                 ''')
+                # Backward-compatible migration: add user_id column if missing
+                try:
+                    cursor = conn.execute("PRAGMA table_info(call_requests)")
+                    columns = [row[1] for row in cursor.fetchall()]
+                    if 'user_id' not in columns:
+                        conn.execute("ALTER TABLE call_requests ADD COLUMN user_id INTEGER")
+                    if 'status' not in columns:
+                        conn.execute("ALTER TABLE call_requests ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'")
+                except Exception:
+                    # Do not fail app startup if pragma/alter fails; table may already be correct
+                    pass
                 conn.commit()
         except Exception as e:
             raise DatabaseError(f"Failed to initialize database: {e}")
@@ -47,7 +60,7 @@ class CallRepository:
             if conn:
                 conn.close()
     
-    def insert_call_request(self, email: str, phone_to: str, prompt: str) -> int:
+    def insert_call_request(self, email: str, phone_to: str, prompt: str, user_id: Optional[int] = None, status: str = 'pending') -> int:
         """
         Insert a new call request.
         
@@ -65,10 +78,16 @@ class CallRepository:
         with self.lock:
             try:
                 with self._get_connection() as conn:
-                    cursor = conn.execute(
-                        "INSERT INTO call_requests (email, phone_to, prompt) VALUES (?, ?, ?)",
-                        (email, phone_to, prompt)
-                    )
+                    if user_id is not None:
+                        cursor = conn.execute(
+                            "INSERT INTO call_requests (email, phone_to, prompt, user_id, status) VALUES (?, ?, ?, ?, ?)",
+                            (email, phone_to, prompt, user_id, status)
+                        )
+                    else:
+                        cursor = conn.execute(
+                            "INSERT INTO call_requests (email, phone_to, prompt, status) VALUES (?, ?, ?, ?)",
+                            (email, phone_to, prompt, status)
+                        )
                     conn.commit()
                     return cursor.lastrowid
             except Exception as e:
@@ -144,6 +163,22 @@ class CallRepository:
                     return dict(row) if row else None
             except Exception as e:
                 raise DatabaseError(f"Failed to get call request by ID: {e}")
+
+    def get_last_call_request_by_email(self, email: str) -> Optional[Dict[str, Any]]:
+        """
+        Get the most recent call request for a given email.
+        """
+        with self.lock:
+            try:
+                with self._get_connection() as conn:
+                    cursor = conn.execute(
+                        "SELECT * FROM call_requests WHERE email = ? ORDER BY id DESC LIMIT 1",
+                        (email,)
+                    )
+                    row = cursor.fetchone()
+                    return dict(row) if row else None
+            except Exception as e:
+                raise DatabaseError(f"Failed to get last call request by email: {e}")
     
     def close(self):
         """Close any remaining connections. This is a no-op since we use context managers."""

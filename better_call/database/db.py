@@ -19,9 +19,22 @@ class PromptDB:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     email TEXT NOT NULL,
                     phone_to TEXT NOT NULL,
-                    prompt TEXT NOT NULL
+                    prompt TEXT NOT NULL,
+                    user_id INTEGER,
+                    status TEXT NOT NULL DEFAULT 'pending'
                 )
             ''')
+            # Backward-compatible migration to add user_id if missing
+            try:
+                cursor = self.conn.execute("PRAGMA table_info(call_requests)")
+                columns = [row[1] for row in cursor.fetchall()]
+                if 'user_id' not in columns:
+                    self.conn.execute("ALTER TABLE call_requests ADD COLUMN user_id INTEGER")
+                if 'status' not in columns:
+                    self.conn.execute("ALTER TABLE call_requests ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'")
+            except Exception:
+                # Ignore migration failures; table may already include the column
+                pass
             
             self.conn.execute('''
                 CREATE TABLE IF NOT EXISTS payments (
@@ -42,12 +55,18 @@ class PromptDB:
             ''')
             self.conn.commit()
 
-    def insert_call_request(self, email: str, telefone: str, prompt: str):
+    def insert_call_request(self, email: str, telefone: str, prompt: str, user_id: Optional[int] = None, status: str = 'pending'):
         with self.lock:
-            self.conn.execute(
-                "INSERT INTO call_requests (email, phone_to, prompt) VALUES (?, ?, ?)",
-                (email, telefone, prompt)
-            )
+            if user_id is not None:
+                self.conn.execute(
+                    "INSERT INTO call_requests (email, phone_to, prompt, user_id, status) VALUES (?, ?, ?, ?, ?)",
+                    (email, telefone, prompt, user_id, status)
+                )
+            else:
+                self.conn.execute(
+                    "INSERT INTO call_requests (email, phone_to, prompt, status) VALUES (?, ?, ?, ?)",
+                    (email, telefone, prompt, status)
+                )
             self.conn.commit()
 
     def get_last_prompt(self) -> str:

@@ -4,6 +4,7 @@ from typing import Optional
 from ..repositories.call_repository import CallRepository
 from ..repositories.user_repository import UserRepository
 from ..services.call_service import CallService
+from ..services.mock_payments_service import MockPaymentsService
 from ..core.config import settings
 from ..core.security import decode_access_token
 
@@ -29,3 +30,8 @@ def get_current_user_email(authorization: Optional[str] = Header(default=None)) 
     token = authorization.split(" ", 1)[1]
     payload = decode_access_token(token)
     return payload.get("sub") if payload else None
+
+
+def get_payments_service() -> MockPaymentsService:
+    """Dependency provider for the mocked payments service."""
+    return MockPaymentsService()

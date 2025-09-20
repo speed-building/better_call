@@ -94,3 +94,18 @@ async def stripe_webhook(
     except Exception as e:
         print(f"Error processing webhook: {str(e)}")
         raise HTTPException(status_code=500, detail="Webhook processing failed")
+
+
+@router.get("/status")
+async def get_payment_status(payment_id: str | None = None, stripe_payment_link_id: str | None = None):
+    payment_service = PaymentService()
+    try:
+        result = await payment_service.get_payment_status(
+            payment_id=payment_id,
+            stripe_payment_link_id=stripe_payment_link_id,
+        )
+        if not result:
+            return JSONResponse(content={"exists": False}, status_code=404)
+        return JSONResponse(content={"exists": True, "status": result.status, "data": result.dict()}, status_code=200)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get payment status: {str(e)}")
