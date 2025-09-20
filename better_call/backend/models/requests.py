@@ -15,3 +15,13 @@ class CallRequest(BaseModel):
         default="", 
         description="Optional prompt to customize the call behavior"
     )
+
+
+class RegisterRequest(BaseModel):
+    email: str
+    password: str = Field(min_length=6)
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str

@@ -27,6 +27,17 @@ class Settings:
         # Backend Configuration
         self.backend_base_url = os.getenv("BACKEND_BASE_URL", "http://127.0.0.1:9001")
 
+        # Stripe (placeholder for frontend redirect)
+        self.stripe_checkout_url = os.getenv("STRIPE_CHECKOUT_URL", "")
+
+        # JWT Auth
+        self.jwt_secret_key = os.getenv("JWT_SECRET_KEY", "change-me-in-prod")
+        self.jwt_algorithm = os.getenv("JWT_ALGORITHM", "HS256")
+        try:
+            self.jwt_access_token_exp_minutes = int(os.getenv("JWT_ACCESS_TOKEN_EXP_MINUTES", "1440"))
+        except Exception:
+            self.jwt_access_token_exp_minutes = 1440
+
 
 # Global settings instance
 settings = Settings()

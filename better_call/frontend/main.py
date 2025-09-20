@@ -25,13 +25,31 @@ async def submit_form(
     request: Request,
     name: str = Form(...),
     email: str = Form(...),
+    password: str = Form(...),
     destination: str = Form(...),
     prompt: str = Form("")
 ):
     payload = {"name": name, "email": email, "destination": destination, "prompt": prompt}
     try:
         async with httpx.AsyncClient(timeout=20.0) as client:
-            r = await client.post(f"{BACKEND_BASE_URL}/api/call", json=payload)
+            # Login or register (best-effort simple flow)
+            token = None
+            try:
+                lr = await client.post(f"{BACKEND_BASE_URL}/api/auth/login", json={"email": email, "password": password})
+                if lr.status_code == 200:
+                    token = lr.json().get("access_token")
+                else:
+                    rr = await client.post(
+                        f"{BACKEND_BASE_URL}/api/auth/register",
+                        json={"email": email, "password": password, "initial_credits": 0}
+                    )
+                    if rr.status_code == 200:
+                        token = rr.json().get("access_token")
+            except Exception:
+                pass
+
+            headers = {"Authorization": f"Bearer {token}"} if token else {}
+            r = await client.post(f"{BACKEND_BASE_URL}/api/call", json=payload, headers=headers)
         if r.status_code == 200:
             data = r.json()
             if data.get("ok"):
@@ -53,6 +71,35 @@ async def submit_form(
                     status_code=500,
                 )
         else:
+            if r.status_code == 401:
+                return templates.TemplateResponse(
+                    "error.html",
+                    {
+                        "request": request,
+                        "title": "Unauthorized",
+                        "details": "Please sign in again.",
+                    },
+                    status_code=401,
+                )
+            if r.status_code == 402:
+                try:
+                    data = r.json()
+                    checkout = data.get("details", {}).get("stripe_checkout_url")
+                    if checkout:
+                        return templates.TemplateResponse(
+                            "error.html",
+                            {
+                                "request": request,
+                                "title": "Insufficient credits",
+                                "details": {
+                                    "message": "Redirecting to checkout...",
+                                    "checkout": checkout,
+                                },
+                            },
+                            status_code=402,
+                        )
+                except Exception:
+                    pass
             return templates.TemplateResponse(
                 "error.html",
                 {

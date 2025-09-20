@@ -19,3 +19,13 @@ class CallResponse(BaseResponse):
     to: Optional[str] = None
     error: Optional[str] = None
     details: Optional[Dict[str, Any]] = None
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class CreditsResponse(BaseModel):
+    email: str
+    credits: int

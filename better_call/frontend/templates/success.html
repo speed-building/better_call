@@ -1,13 +1,58 @@
 <!doctype html>
-<html>
-  <head><meta charset="utf-8"><title>Call Requested</title></head>
-  <body>
-    <h1>Call Requested</h1>
-    <p><b>Call SID:</b> {{ sid }}</p>
-    <p><b>To:</b> {{ destination }}</p>
-    <p><b>Name:</b> {{ name }}</p>
-    <p><b>Email:</b> {{ email }}</p>
-    <p><b>Prompt:</b> {{ prompt }}</p>
-    <p><a href="/">Back</a></p>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Call Requested • Better Call</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      .fade-in { animation: fadeIn .4s ease-out both; }
+      @keyframes fadeIn { from { opacity:0; transform: translateY(8px) } to { opacity:1; transform: none } }
+    </style>
+  </head>
+  <body class="min-h-dvh bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
+    <div class="mx-auto max-w-2xl p-6">
+      <main class="bg-white/70 backdrop-blur-xl shadow-xl ring-1 ring-black/5 rounded-3xl p-6 sm:p-8 fade-in">
+        <div class="flex items-start gap-4">
+          <div class="h-10 w-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg"></div>
+          <div class="flex-1">
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900">Call Requested</h1>
+            <p class="mt-1 text-sm text-gray-600">
+              We’re processing your AI call. You’ll receive an email update shortly.
+            </p>
+          </div>
+        </div>
+
+        <dl class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div class="rounded-2xl bg-white p-4 ring-1 ring-gray-100 shadow-sm">
+            <dt class="text-xs uppercase tracking-wider text-gray-500">Call SID</dt>
+            <dd class="mt-1 font-semibold text-gray-900">{{ sid }}</dd>
+          </div>
+          <div class="rounded-2xl bg-white p-4 ring-1 ring-gray-100 shadow-sm">
+            <dt class="text-xs uppercase tracking-wider text-gray-500">Recipient</dt>
+            <dd class="mt-1 font-semibold text-gray-900 break-words">{{ destination }}</dd>
+          </div>
+          <div class="rounded-2xl bg-white p-4 ring-1 ring-gray-100 shadow-sm">
+            <dt class="text-xs uppercase tracking-wider text-gray-500">Requested by</dt>
+            <dd class="mt-1 font-semibold text-gray-900">{{ name }}</dd>
+          </div>
+          <div class="rounded-2xl bg-white p-4 ring-1 ring-gray-100 shadow-sm">
+            <dt class="text-xs uppercase tracking-wider text-gray-500">Email</dt>
+            <dd class="mt-1 font-semibold text-gray-900 break-words">{{ email }}</dd>
+          </div>
+        </dl>
+
+        <div class="mt-4 rounded-2xl bg-white p-4 ring-1 ring-gray-100 shadow-sm">
+          <dt class="text-xs uppercase tracking-wider text-gray-500">Script / Prompt</dt>
+          <dd class="mt-2 whitespace-pre-wrap text-gray-800">{{ prompt }}</dd>
+        </div>
+
+        <div class="mt-6 flex items-center gap-3">
+          <a href="/" class="inline-flex items-center rounded-xl bg-indigo-600 px-5 py-3 text-white font-semibold shadow-lg hover:bg-indigo-700">
+            Make another call
+          </a>
+        </div>
+      </main>
+    </div>
   </body>
 </html>
