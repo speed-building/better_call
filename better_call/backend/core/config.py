@@ -15,6 +15,11 @@ class Settings:
         # OpenAI Configuration
         self.openai_api_key = os.getenv("OPENAI_API_KEY", "")
         
+        # Stripe Configuration
+        self.stripe_secret_key = os.getenv("STRIPE_SECRET_KEY", "")
+        self.stripe_publishable_key = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
+        self.stripe_webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+        
         # Database Configuration
         self.db_path = os.getenv(
             "DB_PATH",

@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional
+from decimal import Decimal
 
 
 class CallRequest(BaseModel):
@@ -16,6 +17,15 @@ class CallRequest(BaseModel):
         description="Optional prompt to customize the call behavior"
     )
 
+class PaymentRequest(BaseModel):
+    """Request model for creating a payment."""
+    
+    amount: Decimal = Field(gt=0, description="Payment amount")
+    currency: str = Field(default="usd", description="Payment currency")
+    description: Optional[str] = Field(default="", description="Payment description")
+    customer_email: Optional[str] = Field(default=None, description="Customer email")
+    success_url: str = Field(description="URL to redirect after successful payment")
+    cancel_url: str = Field(description="URL to redirect after cancelled payment")
 
 class RegisterRequest(BaseModel):
     email: str
