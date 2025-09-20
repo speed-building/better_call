@@ -20,6 +20,11 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+
+@router.get("/local-call-test", response_class=HTMLResponse)
+async def local_call_test(request: Request):
+    return templates.TemplateResponse("local_call_test.html", {"request": request})
+
 @router.post("/call", response_class=HTMLResponse)
 async def submit_form(
     request: Request,

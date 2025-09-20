@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Better Call - Local Call Simulator</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 5px; background: #fafafa; }
+        .call-section { background: #e8f5e8; border-color: #4caf50; }
+        .active { background: #fff3cd; border-color: #ffc107; }
+        button { padding: 12px 24px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        .call-btn { background: #28a745; font-size: 16px; padding: 15px 30px; }
+        .call-btn:hover { background: #218838; }
+        .end-btn { background: #dc3545; }
+        .end-btn:hover { background: #c82333; }
+        textarea, input { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; box-sizing: border-box; }
+        .log { background: #f8f9fa; padding: 15px; border-radius: 5px; max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 12px; border: 1px solid #dee2e6; }
+        .error { color: #dc3545; font-weight: bold; }
+        .success { color: #28a745; font-weight: bold; }
+        .info { color: #17a2b8; }
+        .call-status { font-size: 18px; font-weight: bold; text-align: center; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .status-idle { background: #e9ecef; color: #495057; }
+        .status-calling { background: #fff3cd; color: #856404; }
+        .status-connected { background: #d4edda; color: #155724; }
+        .audio-controls { display: flex; gap: 10px; align-items: center; margin: 10px 0; flex-wrap: wrap; }
+        .recording { background: #dc3545; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: #333; margin-bottom: 10px; }
+        .header p { color: #666; font-size: 16px; }
+        .back-link { display: inline-block; margin-bottom: 20px; color: #007bff; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">← Back to Main</a>
+        
+        <div class="header">
+            <h1>🎯 Better Call - Local Call Simulator</h1>
+            <p><strong>Test your OpenAI Realtime API changes locally without making expensive Twilio calls!</strong></p>
+        </div>
+        
+        <div class="section">
+            <h2>📞 Simulate Call</h2>
+            <input type="text" id="name" placeholder="Your name" value="Test User">
+            <input type="text" id="destination" placeholder="Destination phone (for simulation)" value="+1234567890">
+            <textarea id="prompt" placeholder="Custom prompt (optional)" rows="3"></textarea>
+            <button onclick="simulateCall()" class="call-btn" id="simulateBtn">🎯 Simulate Call</button>
+            <div id="callResult" class="log"></div>
+        </div>
+        
+        <div class="call-status status-idle" id="callStatus">
+            📱 Ready to simulate call
+        </div>
+        
+        <div class="section call-section" id="conversationSection" style="display: none;">
+            <h2>🎤 Conversation Simulator</h2>
+            <div class="audio-controls">
+                <button onclick="startRecording()" id="recordBtn" disabled>🎤 Start Recording</button>
+                <button onclick="stopRecording()" id="stopBtn" disabled>⏹️ Stop Recording</button>
+                <button onclick="sendTextMessage()" id="textBtn" disabled>💬 Send Text</button>
+                <button onclick="endCall()" class="end-btn" id="endBtn" disabled>📞 End Call</button>
+            </div>
+            <input type="text" id="textMessage" placeholder="Type a message to send as text..." disabled>
+            <div id="conversationLog" class="log"></div>
+        </div>
+        
+        <div class="section">
+            <h2>📋 Instructions</h2>
+            <ol>
+                <li><strong>Simulate Call:</strong> Enter your details and click "Simulate Call" to create a local session</li>
+                <li><strong>Start Conversation:</strong> Once connected, use the recording button or text input to interact</li>
+                <li><strong>Test Changes:</strong> Modify your prompts and test immediately without Twilio costs</li>
+                <li><strong>Monitor Logs:</strong> Watch the conversation flow in real-time</li>
+            </ol>
+            <p><em>💡 This completely bypasses Twilio and connects directly to OpenAI for cost-effective testing!</em></p>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let callId = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            element.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function updateCallStatus(status, message) {
+            const statusEl = document.getElementById('callStatus');
+            statusEl.className = `call-status status-${status}`;
+            statusEl.textContent = message;
+        }
+
+        async function simulateCall() {
+            const name = document.getElementById('name').value;
+            const destination = document.getElementById('destination').value;
+            const prompt = document.getElementById('prompt').value;
+            
+            if (!name.trim()) {
+                alert('Please enter your name');
+                return;
+            }
+            
+            try {
+                updateCallStatus('calling', '📞 Creating simulated call...');
+                log('callResult', 'Creating simulated call session...');
+                
+                const response = await fetch('/api/local-call/simulate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, destination, prompt })
+                });
+                
+                const data = await response.json();
+                
+                if (data.ok) {
+                    callId = data.call_sid;
+                    log('callResult', `✅ Call simulated successfully! Call ID: ${callId}`, 'success');
+                    log('callResult', `📡 WebSocket URL: ${data.details.websocket_url}`);
+                    
+                    // Connect to WebSocket
+                    connectWebSocket();
+                    
+                    // Show conversation section
+                    document.getElementById('conversationSection').style.display = 'block';
+                    document.getElementById('simulateBtn').disabled = true;
+                    
+                } else {
+                    log('callResult', `❌ Error: ${data.error}`, 'error');
+                    updateCallStatus('idle', '📱 Ready to simulate call');
+                }
+            } catch (error) {
+                log('callResult', `❌ Network error: ${error.message}`, 'error');
+                updateCallStatus('idle', '📱 Ready to simulate call');
+            }
+        }
+
+        function connectWebSocket() {
+            if (!callId) return;
+            
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/api/local-call/websocket/${callId}`;
+            
+            log('conversationLog', `🔌 Connecting to WebSocket: ${wsUrl}`);
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = function() {
+                log('conversationLog', '✅ WebSocket connected', 'success');
+                updateCallStatus('calling', '📞 Connecting to OpenAI...');
+            };
+            
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            };
+            
+            ws.onclose = function() {
+                log('conversationLog', '🔌 WebSocket disconnected');
+                updateCallStatus('idle', '📱 Call ended');
+                resetUI();
+            };
+            
+            ws.onerror = function(error) {
+                log('conversationLog', `❌ WebSocket error: ${error}`, 'error');
+                updateCallStatus('idle', '📱 Connection failed');
+            };
+        }
+
+        function handleWebSocketMessage(data) {
+            switch(data.type) {
+                case 'call_started':
+                    log('conversationLog', '📞 Call started, connecting to OpenAI...', 'success');
+                    break;
+                case 'openai_connected':
+                    log('conversationLog', '🤖 Connected to OpenAI Realtime API!', 'success');
+                    updateCallStatus('connected', '🤖 Connected - Ready to talk!');
+                    enableControls();
+                    break;
+                case 'error':
+                    log('conversationLog', `❌ Error: ${data.error}`, 'error');
+                    break;
+                case 'session.updated':
+                    log('conversationLog', '⚙️ OpenAI session configured');
+                    break;
+                case 'response.audio.delta':
+                    log('conversationLog', '🔊 Receiving audio from AI...');
+                    break;
+                case 'response.text.delta':
+                    log('conversationLog', `🤖 AI: ${data.delta || ''}`);
+                    break;
+                case 'conversation.item.created':
+                    if (data.item && data.item.content) {
+                        const content = data.item.content[0];
+                        if (content.type === 'text') {
+                            log('conversationLog', `💬 ${data.item.role}: ${content.text}`);
+                        }
+                    }
+                    break;
+                default:
+                    log('conversationLog', `📨 ${data.type}: ${JSON.stringify(data).substring(0, 100)}...`);
+            }
+        }
+
+        function enableControls() {
+            document.getElementById('recordBtn').disabled = false;
+            document.getElementById('textBtn').disabled = false;
+            document.getElementById('textMessage').disabled = false;
+            document.getElementById('endBtn').disabled = false;
+        }
+
+        function resetUI() {
+            document.getElementById('simulateBtn').disabled = false;
+            document.getElementById('recordBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('textBtn').disabled = true;
+            document.getElementById('textMessage').disabled = true;
+            document.getElementById('endBtn').disabled = true;
+            document.getElementById('conversationSection').style.display = 'none';
+            callId = null;
+            ws = null;
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    sendAudioData(audioBlob);
+                };
+                
+                mediaRecorder.start();
+                document.getElementById('recordBtn').disabled = true;
+                document.getElementById('recordBtn').className = 'recording';
+                document.getElementById('stopBtn').disabled = false;
+                log('conversationLog', '🎤 Recording started...');
+                
+            } catch (error) {
+                log('conversationLog', `❌ Microphone error: ${error.message}`, 'error');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                
+                document.getElementById('recordBtn').disabled = false;
+                document.getElementById('recordBtn').className = '';
+                document.getElementById('stopBtn').disabled = true;
+                log('conversationLog', '⏹️ Recording stopped, sending audio...');
+            }
+        }
+
+        function sendAudioData(audioBlob) {
+            // Convert audio to base64 and send to OpenAI
+            const reader = new FileReader();
+            reader.onload = function() {
+                const audioData = reader.result.split(',')[1]; // Remove data:audio/wav;base64,
+                
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: 'input_audio_buffer.append',
+                        audio: audioData
+                    }));
+                    
+                    // Commit the audio
+                    ws.send(JSON.stringify({
+                        type: 'input_audio_buffer.commit'
+                    }));
+                    
+                    log('conversationLog', '📤 Audio sent to AI');
+                }
+            };
+            reader.readAsDataURL(audioBlob);
+        }
+
+        function sendTextMessage() {
+            const input = document.getElementById('textMessage');
+            const message = input.value.trim();
+            
+            if (message && ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'conversation.item.create',
+                    item: {
+                        type: 'message',
+                        role: 'user',
+                        content: [{
+                            type: 'input_text',
+                            text: message
+                        }]
+                    }
+                }));
+                
+                // Trigger response
+                ws.send(JSON.stringify({
+                    type: 'response.create'
+                }));
+                
+                log('conversationLog', `💬 You: ${message}`);
+                input.value = '';
+            }
+        }
+
+        function endCall() {
+            if (ws) {
+                ws.close();
+            }
+            updateCallStatus('idle', '📱 Call ended');
+            log('conversationLog', '📞 Call ended by user');
+        }
+
+        // Allow Enter key to send text messages
+        document.getElementById('textMessage').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendTextMessage();
+            }
+        });
+    </script>
+</body>
+</html>
