@@ -5,6 +5,7 @@ from datetime import datetime
 
 from ..core.config import settings
 from ..models.responses import PaymentResponse, PaymentStatusResponse
+from ..models.user import User
 from ..repositories.payment_repository import PaymentRepository
 
 
@@ -17,16 +18,30 @@ class PaymentService:
     
     async def create_payment_link(
         self, 
-        amount: Decimal, 
-        currency: str, 
-        success_url: str, 
-        cancel_url: str,
-        description: Optional[str] = None, 
-        customer_email: Optional[str] = None
+        user: User
     ) -> PaymentResponse:
         try:
+            amount = Decimal(str(settings.payment_amount))
+            currency = settings.payment_currency
+            description = settings.payment_description
+            success_url = settings.payment_success_url
+            
             amount_cents = int(amount * 100)
             
+            payment_id = self.payment_repo.create_payment(
+                user_id=user.id,
+                stripe_payment_link_id=None,
+                amount=amount,
+                currency=currency,
+                description=description,
+                customer_email=user.email,
+                success_url=success_url
+            )
+            
+            # Construir URLs com o payment_id
+            success_url = f"{success_url}?payment_id={payment_id}"
+            
+            # Criar o payment link no Stripe com as URLs que incluem o payment_id
             payment_link = stripe.PaymentLink.create(
                 line_items=[{
                     'price_data': {
@@ -52,20 +67,14 @@ class PaymentService:
                 payment_method_types=['card'],
                 submit_type='pay',
                 metadata={
-                    'customer_email': customer_email or '',
+                    'customer_email': user.email,
                     'description': description or '',
+                    'payment_id': str(payment_id),
+                    'user_id': str(user.id) if user.id else '',
                 }
             )
             
-            payment_id = self.payment_repo.create_payment(
-                stripe_payment_link_id=payment_link.id,
-                amount=amount,
-                currency=currency,
-                description=description,
-                customer_email=customer_email,
-                success_url=success_url,
-                cancel_url=cancel_url
-            )
+            self.payment_repo.update_payment_stripe_id(payment_id, payment_link.id)
             
             return PaymentResponse(
                 ok=True,
